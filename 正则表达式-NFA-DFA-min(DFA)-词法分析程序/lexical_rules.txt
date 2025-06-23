@@ -1,0 +1,41 @@
+# 词法规则配置文件
+# 格式: pattern|token_type|priority
+# 优先级数字越大，匹配优先级越高
+
+# 注释规则
+\{[^}]*\}|COMMENT|10
+
+# 字符串字面量
+'([^'\\]|\\.)*'|STRING_LITERAL|9
+
+# 数字
+\d+\.\d+|NUMBER|8
+\d+|NUMBER|8
+
+# 双字符运算符
+:=|ASSIGN|7
+<=|LESS_EQUAL|7
+>=|GREATER_EQUAL|7
+<>|NOT_EQUAL|7
+
+# 单字符运算符和分隔符
+\+|PLUS|6
+-|MINUS|6
+\*|MULTIPLY|6
+/|DIVIDE|6
+=|EQUAL|6
+<|LESS|6
+>|GREATER|6
+;|SEMICOLON|6
+,|COMMA|6
+\.|DOT|6
+:|COLON|6
+\(|LPAREN|6
+\)|RPAREN|6
+
+# 标识符（必须在关键字检查之后）
+[a-zA-Z_][a-zA-Z0-9_]*|IDENTIFIER|5
+
+# 空白字符
+\n|NEWLINE|1
+[ \t]+|WHITESPACE|1

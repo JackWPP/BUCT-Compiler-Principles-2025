@@ -1,0 +1,25 @@
+program example;
+var
+    x, y: integer;
+    result: real;
+    message: string;
+begin
+    x := 10;
+    y := 20;
+    result := x + y * 2.5;
+    
+    if result > 50 then
+    begin
+        message := 'Result is large';
+    end
+    else
+    begin
+        message := 'Result is small';
+    end;
+    
+    { 这是一个注释 }
+    while x > 0 do
+    begin
+        x := x - 1;
+    end;
+end.

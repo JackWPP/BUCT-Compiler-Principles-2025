@@ -1,0 +1,72 @@
+词法分析结果示例
+==================
+
+输入代码：
+program example;
+var x: integer;
+begin
+    x := 10 + 20;
+end.
+
+分析结果：
+--------------------------------------------------
+  1. Token(PROGRAM, 'program', 1:1)
+  2. Token(IDENTIFIER, 'example', 1:9)
+  3. Token(SEMICOLON, ';', 1:16)
+  4. Token(VAR, 'var', 2:1)
+  5. Token(IDENTIFIER, 'x', 2:5)
+  6. Token(COLON, ':', 2:6)
+  7. Token(INTEGER, 'integer', 2:8)
+  8. Token(SEMICOLON, ';', 2:15)
+  9. Token(BEGIN, 'begin', 3:1)
+ 10. Token(IDENTIFIER, 'x', 4:5)
+ 11. Token(ASSIGN, ':=', 4:7)
+ 12. Token(NUMBER, '10', 4:10)
+ 13. Token(PLUS, '+', 4:13)
+ 14. Token(NUMBER, '20', 4:15)
+ 15. Token(SEMICOLON, ';', 4:17)
+ 16. Token(END, 'end', 5:1)
+ 17. Token(DOT, '.', 5:4)
+
+统计信息：
+--------------------
+总Token数量: 18
+  IDENTIFIER: 2
+  SEMICOLON: 3
+  NUMBER: 2
+  PROGRAM: 1
+  VAR: 1
+  INTEGER: 1
+  BEGIN: 1
+  ASSIGN: 1
+  PLUS: 1
+  END: 1
+  DOT: 1
+  COLON: 1
+  EOF: 1
+
+✅ 词法分析完成，无错误
+
+正则表达式转换示例
+==================
+
+输入正则表达式: [a-z]+
+
+步骤1: 正则表达式 -> NFA
+  ✓ NFA状态数: 3
+  ✓ 字母表: ['a', 'b', 'c', ..., 'z']
+
+步骤2: NFA -> DFA
+  ✓ DFA状态数: 2
+
+步骤3: DFA -> 最小化DFA
+  ✓ 最小化DFA状态数: 2
+
+DFA状态转移表:
+----------------------------------------
+状态     接受   a     b     c     ...
+----------------------------------------
+0        否     1     1     1     ...
+1        是     1     1     1     ...
+
+✅ 完整流程演示完成！
