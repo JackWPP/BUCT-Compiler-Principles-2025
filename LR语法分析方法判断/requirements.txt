@@ -1,0 +1,21 @@
+# LR语法分析方法判断程序依赖包
+# 编译原理作业 - 王海翔
+
+# GUI框架 (Python内置，无需安装)
+# tkinter
+
+# 图形绘制和可视化
+matplotlib>=3.5.0
+networkx>=2.6.0
+
+# 数据处理
+numpy>=1.21.0
+
+# 可选：更好的图形布局
+# pygraphviz>=1.7  # 需要Graphviz
+# pydot>=1.4.2     # 需要Graphviz
+
+# 开发和测试工具（可选）
+# pytest>=6.0.0
+# black>=21.0.0
+# flake8>=3.9.0
