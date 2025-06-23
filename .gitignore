@@ -196,3 +196,5 @@ cython_debug/
 正则表达式-NFA-DFA-min(DFA)-词法分析程序/正则表达式-NFA-DFA-min(DFA)-词法分析程序.zip
 正则表达式-NFA-DFA-min(DFA)-词法分析程序/启动词法分析器GUI.bat
 正则表达式-NFA-DFA-min(DFA)-词法分析程序/计科2203-王海翔-2021060187-2.10 正则表达式-NFA-DFA-min(DFA)-词法分析程序.zip
+LR语法分析方法判断/发布包/LR语法分析器.exe
+SLR(1)完整的语法分析方法/发布包/SLR1语法分析器.exe
