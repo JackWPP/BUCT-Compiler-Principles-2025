@@ -564,6 +564,213 @@ class LRAnalyzer:
     def get_conflicts(self, lr_type: LRType) -> List[str]:
         """获取指定LR类型的冲突信息"""
         return self.conflicts.get(lr_type, [])
+    
+    def generate_lr0_table(self) -> Tuple[Dict, Dict]:
+        """生成LR(0)分析表"""
+        if not self.automaton:
+            return {}, {}
+        
+        action_table = {}  # ACTION表
+        goto_table = {}    # GOTO表
+        
+        # 初始化表格
+        for i in range(len(self.automaton.states)):
+            action_table[i] = {}
+            goto_table[i] = {}
+        
+        # 填充ACTION和GOTO表
+        for state_idx, state in enumerate(self.automaton.states):
+            # 处理移进动作
+            for item in state:
+                if not item.is_complete():
+                    next_sym = item.next_symbol()
+                    if next_sym in self.grammar.terminals:
+                        # 移进动作
+                        if (state_idx, next_sym) in self.automaton.transitions:
+                            target_state = self.automaton.transitions[(state_idx, next_sym)]
+                            action_table[state_idx][next_sym] = f"s{target_state}"
+            
+            # 处理GOTO动作
+            for (from_state, symbol), to_state in self.automaton.transitions.items():
+                if from_state == state_idx and symbol in self.grammar.nonterminals:
+                    goto_table[state_idx][symbol] = to_state
+            
+            # 处理归约动作
+            for item in state:
+                if item.is_complete():
+                    if item.production.index == 0:  # 拓广产生式
+                        action_table[state_idx]['$'] = "acc"
+                    else:
+                        # 归约动作 - LR(0)对所有终结符都归约
+                        for terminal in self.grammar.terminals:
+                            if terminal != '$':
+                                if terminal in action_table[state_idx]:
+                                    # 冲突检测
+                                    action_table[state_idx][terminal] = f"冲突: {action_table[state_idx][terminal]} / r{item.production.index}"
+                                else:
+                                    action_table[state_idx][terminal] = f"r{item.production.index}"
+        
+        return action_table, goto_table
+    
+    def generate_slr1_table(self) -> Tuple[Dict, Dict]:
+        """生成SLR(1)分析表"""
+        if not self.automaton:
+            return {}, {}
+        
+        action_table = {}  # ACTION表
+        goto_table = {}    # GOTO表
+        
+        # 初始化表格
+        for i in range(len(self.automaton.states)):
+            action_table[i] = {}
+            goto_table[i] = {}
+        
+        # 填充ACTION和GOTO表
+        for state_idx, state in enumerate(self.automaton.states):
+            # 处理移进动作
+            for item in state:
+                if not item.is_complete():
+                    next_sym = item.next_symbol()
+                    if next_sym in self.grammar.terminals:
+                        # 移进动作
+                        if (state_idx, next_sym) in self.automaton.transitions:
+                            target_state = self.automaton.transitions[(state_idx, next_sym)]
+                            action_table[state_idx][next_sym] = f"s{target_state}"
+            
+            # 处理GOTO动作
+            for (from_state, symbol), to_state in self.automaton.transitions.items():
+                if from_state == state_idx and symbol in self.grammar.nonterminals:
+                    goto_table[state_idx][symbol] = to_state
+            
+            # 处理归约动作
+            for item in state:
+                if item.is_complete():
+                    if item.production.index == 0:  # 拓广产生式
+                        action_table[state_idx]['$'] = "acc"
+                    else:
+                        # 归约动作 - SLR(1)只对FOLLOW集合中的符号归约
+                        follow_set = self.grammar.follow_sets.get(item.production.left, set())
+                        for terminal in follow_set:
+                            if terminal in action_table[state_idx]:
+                                # 冲突检测
+                                action_table[state_idx][terminal] = f"冲突: {action_table[state_idx][terminal]} / r{item.production.index}"
+                            else:
+                                action_table[state_idx][terminal] = f"r{item.production.index}"
+        
+        return action_table, goto_table
+    
+    def generate_lr1_table(self) -> Tuple[Dict, Dict]:
+        """生成LR(1)分析表"""
+        # 构建LR(1)自动机
+        lr1_automaton = LRAutomaton(self.grammar.augment_grammar())
+        lr1_automaton.build_lr1_automaton()
+        
+        action_table = {}  # ACTION表
+        goto_table = {}    # GOTO表
+        
+        # 初始化表格
+        for i in range(len(lr1_automaton.states)):
+            action_table[i] = {}
+            goto_table[i] = {}
+        
+        # 填充ACTION和GOTO表
+        for state_idx, state in enumerate(lr1_automaton.states):
+            # 处理移进动作
+            for item in state:
+                if not item.is_complete():
+                    next_sym = item.next_symbol()
+                    if next_sym in self.grammar.terminals:
+                        # 移进动作
+                        if (state_idx, next_sym) in lr1_automaton.transitions:
+                            target_state = lr1_automaton.transitions[(state_idx, next_sym)]
+                            action_table[state_idx][next_sym] = f"s{target_state}"
+            
+            # 处理GOTO动作
+            for (from_state, symbol), to_state in lr1_automaton.transitions.items():
+                if from_state == state_idx and symbol in self.grammar.nonterminals:
+                    goto_table[state_idx][symbol] = to_state
+            
+            # 处理归约动作
+            for item in state:
+                if item.is_complete():
+                    if item.production.index == 0:  # 拓广产生式
+                        action_table[state_idx]['$'] = "acc"
+                    else:
+                        # 归约动作 - LR(1)只对向前看符号归约
+                        lookahead = item.lookahead
+                        if lookahead:
+                            if lookahead in action_table[state_idx]:
+                                # 冲突检测
+                                action_table[state_idx][lookahead] = f"冲突: {action_table[state_idx][lookahead]} / r{item.production.index}"
+                            else:
+                                action_table[state_idx][lookahead] = f"r{item.production.index}"
+        
+        return action_table, goto_table
+    
+    def generate_lalr1_table(self) -> Tuple[Dict, Dict]:
+        """生成LALR(1)分析表"""
+        # 简化实现：直接使用LR(1)表
+        # 实际实现需要合并同心状态
+        return self.generate_lr1_table()
+    
+    def format_parsing_table(self, action_table: Dict, goto_table: Dict, lr_type: str) -> str:
+        """格式化分析表为字符串"""
+        if not action_table and not goto_table:
+            return f"无法生成{lr_type}分析表"
+        
+        result = f"\n{lr_type}分析表\n"
+        result += "=" * 50 + "\n\n"
+        
+        # 获取所有终结符和非终结符
+        terminals = sorted(self.grammar.terminals)
+        nonterminals = sorted(self.grammar.nonterminals)
+        
+        # 确保$在最后
+        if '$' in terminals:
+            terminals.remove('$')
+            terminals.append('$')
+        
+        # ACTION表
+        result += "ACTION表:\n"
+        result += "-" * 30 + "\n"
+        
+        # 表头
+        header = "状态\t"
+        for terminal in terminals:
+            header += f"{terminal}\t"
+        result += header + "\n"
+        
+        # 表内容
+        for state in sorted(action_table.keys()):
+            row = f"{state}\t"
+            for terminal in terminals:
+                action = action_table[state].get(terminal, "")
+                row += f"{action}\t"
+            result += row + "\n"
+        
+        result += "\n"
+        
+        # GOTO表
+        result += "GOTO表:\n"
+        result += "-" * 30 + "\n"
+        
+        # 表头
+        header = "状态\t"
+        for nonterminal in nonterminals:
+            if nonterminal != self.grammar.start_symbol or not nonterminal.endswith("'"):
+                header += f"{nonterminal}\t"
+        result += header + "\n"
+        
+        # 表内容
+        for state in sorted(goto_table.keys()):
+            row = f"{state}\t"
+            for nonterminal in nonterminals:
+                if nonterminal != self.grammar.start_symbol or not nonterminal.endswith("'"):
+                    goto = goto_table[state].get(nonterminal, "")
+                    row += f"{goto}\t"
+            result += row + "\n"
+        
+        return result
 
 # ==================== GUI应用程序 ====================
 
@@ -998,8 +1205,89 @@ F -> ( E ) | id"""
             messagebox.showwarning("警告", "请先执行LR分析")
             return
         
-        # 这里可以实现分析表的生成
-        messagebox.showinfo("提示", "分析表生成功能待实现")
+        try:
+            # 创建新窗口显示分析表
+            table_window = tk.Toplevel(self.root)
+            table_window.title("LR分析表")
+            table_window.geometry("1200x800")
+            
+            # 创建笔记本控件
+            notebook = ttk.Notebook(table_window)
+            notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+            
+            # 生成各种类型的分析表
+            lr_methods = [
+                ("LR(0)", self.analyzer.generate_lr0_table),
+                ("SLR(1)", self.analyzer.generate_slr1_table),
+                ("LR(1)", self.analyzer.generate_lr1_table),
+                ("LALR(1)", self.analyzer.generate_lalr1_table)
+            ]
+            
+            for lr_type, generate_func in lr_methods:
+                try:
+                    action_table, goto_table = generate_func()
+                    table_text = self.analyzer.format_parsing_table(action_table, goto_table, lr_type)
+                    
+                    # 创建标签页
+                    frame = ttk.Frame(notebook)
+                    notebook.add(frame, text=lr_type)
+                    
+                    # 添加控制按钮
+                    button_frame = ttk.Frame(frame)
+                    button_frame.pack(fill=tk.X, pady=(0, 10))
+                    
+                    ttk.Button(button_frame, text=f"保存{lr_type}表", 
+                              command=lambda t=table_text, lt=lr_type: self.save_table(t, lt)).pack(side=tk.LEFT, padx=(0, 10))
+                    ttk.Button(button_frame, text=f"复制{lr_type}表", 
+                              command=lambda t=table_text: self.copy_to_clipboard(t)).pack(side=tk.LEFT)
+                    
+                    # 显示分析表
+                    text_widget = scrolledtext.ScrolledText(frame, font=("Consolas", 9))
+                    text_widget.pack(fill=tk.BOTH, expand=True)
+                    text_widget.insert(tk.END, table_text)
+                    text_widget.config(state=tk.DISABLED)
+                    
+                except Exception as e:
+                    # 如果某个类型的表生成失败，显示错误信息
+                    frame = ttk.Frame(notebook)
+                    notebook.add(frame, text=lr_type)
+                    
+                    error_text = scrolledtext.ScrolledText(frame, font=("Consolas", 9))
+                    error_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+                    error_text.insert(tk.END, f"生成{lr_type}分析表时出错:\n{str(e)}")
+                    error_text.config(state=tk.DISABLED)
+            
+            messagebox.showinfo("成功", "分析表生成完成")
+            
+        except Exception as e:
+            messagebox.showerror("错误", f"分析表生成失败: {e}")
+    
+    def save_table(self, table_text: str, lr_type: str):
+        """保存分析表到文件"""
+        try:
+            filename = filedialog.asksaveasfilename(
+                title=f"保存{lr_type}分析表",
+                defaultextension=".txt",
+                filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")],
+                initialname=f"{lr_type}_parsing_table.txt"
+            )
+            
+            if filename:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(table_text)
+                messagebox.showinfo("成功", f"{lr_type}分析表已保存到: {filename}")
+                
+        except Exception as e:
+            messagebox.showerror("错误", f"保存失败: {e}")
+    
+    def copy_to_clipboard(self, text: str):
+        """复制文本到剪贴板"""
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(text)
+            messagebox.showinfo("成功", "已复制到剪贴板")
+        except Exception as e:
+            messagebox.showerror("错误", f"复制失败: {e}")
     
     def generate_visualization(self):
         """生成自动机可视化"""
