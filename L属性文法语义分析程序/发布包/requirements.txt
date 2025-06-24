@@ -1,0 +1,23 @@
+# L属性文法语义分析程序依赖包列表
+
+# 基础Python包（通常已内置）
+# tkinter - GUI界面库（Python内置）
+# typing - 类型注解支持（Python 3.5+内置）
+# dataclasses - 数据类支持（Python 3.7+内置）
+# enum - 枚举类型支持（Python内置）
+# re - 正则表达式库（Python内置）
+# json - JSON处理库（Python内置）
+# os - 操作系统接口库（Python内置）
+# collections - 集合类型库（Python内置）
+
+# 注意：本程序主要使用Python标准库，无需额外安装第三方包
+# 确保Python版本 >= 3.7 以支持dataclasses
+
+# 如果需要打包为可执行文件，可以使用以下工具：
+# pyinstaller>=4.0
+# cx_Freeze>=6.0
+
+# 开发和测试工具（可选）
+# pytest>=6.0
+# black>=21.0
+# flake8>=3.8

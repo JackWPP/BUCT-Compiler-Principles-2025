@@ -21,27 +21,24 @@ id.name : 综合 字符串 "" "标识符名称"
 id.entry : 综合 字符串 "" "符号表入口"
 
 [语义规则]
-# 产生式 D -> T L 的语义规则
-# 将类型信息传递给标识符列表
+# 产生式0: D -> T L 的语义规则
 L.in := T.type
 
-# 产生式 T -> int 的语义规则
+# 产生式1: T -> int 的语义规则
 T.type := "int"
 
-# 产生式 T -> float 的语义规则  
+# 产生式2: T -> float 的语义规则
 T.type := "float"
 
-# 产生式 T -> char 的语义规则
+# 产生式3: T -> char 的语义规则
 T.type := "char"
 
-# 产生式 T -> string 的语义规则
+# 产生式4: T -> string 的语义规则
 T.type := "string"
 
-# 产生式 L -> L1 , id 的语义规则
-# 继续传递类型信息，并为当前标识符添加类型
+# 产生式5: L -> L1 , id 的语义规则
 L1.in := L.in
-addtype(id.name, L.in)
+id.entry := addtype(id.name, L.in)
 
-# 产生式 L -> id 的语义规则
-# 为标识符添加类型信息到符号表
-addtype(id.name, L.in)
+# 产生式6: L -> id 的语义规则
+id.entry := addtype(id.name, L.in)

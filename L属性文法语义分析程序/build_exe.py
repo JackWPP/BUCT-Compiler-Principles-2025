@@ -61,160 +61,188 @@ def 清理旧文件():
 def 构建可执行文件():
     """构建可执行文件"""
     print("\n=== 构建可执行文件 ===")
-    
-    # PyInstaller命令参数
+
+    # PyInstaller命令参数 - 使用python -m PyInstaller
     命令 = [
-        "pyinstaller",
+        sys.executable, '-m', 'PyInstaller',
         "--onefile",                    # 打包为单个文件
         "--windowed",                   # Windows下隐藏控制台窗口
         "--name=L属性文法语义分析器",    # 可执行文件名称
-        "--icon=icon.ico",              # 图标文件（如果存在）
         "--add-data=sample_grammar.txt;.",  # 包含示例文法文件
         "--add-data=test_cases.txt;.",      # 包含测试用例文件
-        "--distpath=发布包",            # 输出目录
         "l_attribute_main.py"           # 主程序文件
     ]
-    
-    # 如果没有图标文件，移除图标参数
-    if not os.path.exists("icon.ico"):
-        命令.remove("--icon=icon.ico")
-    
+
     try:
         print(f"执行命令: {' '.join(命令)}")
-        subprocess.check_call(命令)
-        print("构建成功！")
+        result = subprocess.run(命令, check=True, capture_output=True, text=True)
+        print("✓ 可执行文件构建成功")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"构建失败: {e}")
+        print(f"✗ 构建失败: {e}")
+        print(f"错误输出: {e.stderr}")
         return False
 
-def 复制附加文件():
-    """复制附加文件到发布目录"""
-    print("\n=== 复制附加文件 ===")
+def 创建发布包():
+    """创建发布包"""
+    print("\n=== 创建发布包 ===")
 
+    # 创建发布包目录
     发布目录 = Path("发布包")
+    if 发布目录.exists():
+        shutil.rmtree(发布目录)
+    发布目录.mkdir()
 
-    # 要复制的文件列表
-    附加文件 = [
-        "sample_grammar.txt",
-        "test_cases.txt",
-        "requirements.txt",
+    # 复制可执行文件
+    exe_file = Path("dist/L属性文法语义分析器.exe")
+    if exe_file.exists():
+        shutil.copy2(exe_file, 发布目录 / "L属性文法语义分析器.exe")
+        print("✓ 复制可执行文件")
+    else:
+        print("✗ 可执行文件不存在")
+        return False
+
+    # 复制文档文件
+    文档文件列表 = [
         "README.md",
         "用户手册.md",
         "技术文档.md",
-        "项目完成报告.md"
+        "项目完成报告.md",
+        "版本信息.md",
+        "作业要求.md",
+        "sample_grammar.txt",
+        "test_cases.txt",
+        "requirements.txt"
     ]
 
-    for 文件 in 附加文件:
-        if os.path.exists(文件):
-            目标路径 = 发布目录 / 文件
-            print(f"复制文件: {文件} -> {目标路径}")
-            shutil.copy2(文件, 目标路径)
-        else:
-            print(f"文件不存在，跳过: {文件}")
+    for 文档 in 文档文件列表:
+        if os.path.exists(文档):
+            shutil.copy2(文档, 发布目录 / 文档)
+            print(f"✓ 复制文档: {文档}")
 
-    # 创建文档目录
-    文档目录 = 发布目录 / "文档"
-    文档目录.mkdir(exist_ok=True)
+    # 创建使用说明文件
+    创建使用说明(发布目录)
 
-    # 复制文档文件到文档目录
-    文档文件 = [
-        "用户手册.md",
-        "技术文档.md",
-        "项目完成报告.md"
-    ]
+    # 创建启动脚本
+    创建启动脚本(发布目录)
 
-    for 文件 in 文档文件:
-        if os.path.exists(文件):
-            目标路径 = 文档目录 / 文件
-            print(f"复制文档: {文件} -> {目标路径}")
-            shutil.copy2(文件, 目标路径)
+    # 创建发布说明
+    创建发布说明(发布目录)
 
-def 创建启动脚本():
-    """创建启动脚本"""
-    print("\n=== 创建启动脚本 ===")
-    
-    发布目录 = Path("发布包")
-    
-    # Windows批处理脚本
-    bat_内容 = """@echo off
-chcp 65001 > nul
-echo 启动L属性文法语义分析器...
-echo.
-L属性文法语义分析器.exe
-if errorlevel 1 (
-    echo.
-    echo 程序运行出错，请检查错误信息
-    pause
-)
-"""
-    
-    bat_文件 = 发布目录 / "启动L属性文法语义分析器.bat"
-    with open(bat_文件, 'w', encoding='gbk') as f:
-        f.write(bat_内容)
-    
-    print(f"创建启动脚本: {bat_文件}")
+    print("✓ 发布包创建完成")
+    return True
 
-def 创建使用说明():
+def 创建使用说明(发布目录):
     """创建使用说明文件"""
-    print("\n=== 创建使用说明 ===")
-    
-    发布目录 = Path("发布包")
-    
-    使用说明 = """# L属性文法语义分析程序 - 使用说明
+    使用说明内容 = """L属性文法语义分析器 - 使用说明
 
-## 运行程序
-双击 `L属性文法语义分析器.exe` 或 `启动L属性文法语义分析器.bat` 即可运行程序。
+快速开始：
+1. 双击"L属性文法语义分析器.exe"启动程序
+2. 在"L属性文法输入"标签页中输入文法定义
+3. 点击"解析文法"和"验证L属性"
+4. 在"语义分析过程"标签页中输入测试字符串
+5. 点击"开始语义分析"查看分析过程
 
-## 功能说明
-1. **L属性文法输入**: 定义L属性文法的产生式、属性和语义规则
-2. **语义分析过程**: 执行语义分析并查看详细步骤
-3. **符号表管理**: 查看和管理符号表内容
-4. **使用帮助**: 查看详细的使用说明和示例
-
-## 核心功能
-- ✅ L属性文法的定义和解析
-- ✅ 语义规则的执行和属性计算
-- ✅ 符号表的管理和维护
-- ✅ 语义分析过程的可视化展示
-- ✅ L属性特性的验证
-
-## 示例文件
-- `sample_grammar.txt`: 示例L属性文法定义
-- `test_cases.txt`: 详细测试用例说明
-
-## 技术信息
-- 开发语言: Python 3.7+
-- GUI框架: tkinter
-- 打包工具: PyInstaller
-
-## 作者信息
-- 作者: 王海翔
-- 学号: 2021060187
-- 班级: 计科2203
-- 课程: 编译原理
-- 完成时间: 2025年6月
-
-## 系统要求
+系统要求：
 - Windows 7/8/10/11
 - 无需安装Python环境
-- 内存: 至少512MB
-- 磁盘空间: 至少100MB
+- 无需安装额外依赖
 
-## 故障排除
-如果程序无法启动，请检查：
-1. 是否有杀毒软件阻止程序运行
-2. 是否有足够的系统权限
-3. 系统是否支持该程序
+文法格式：
+[文法]
+D -> T L
+T -> int | float
+L -> id
 
-如有问题，请联系开发者。
+[属性定义]
+T.type : 综合 字符串 "" "类型信息"
+L.in : 继承 字符串 "" "继承类型"
+
+[语义规则]
+L.in := T.type
+addtype(id.name, L.in)
+
+功能说明：
+- L属性文法输入：定义和编辑L属性文法
+- 语义分析过程：执行语义分析并查看详细步骤
+- 符号表管理：查看和管理符号表内容
+- 使用帮助：详细的使用说明和示例
+
+技术支持：
+作者：王海翔
+学号：2021060187
+班级：计科2203
 """
-    
-    说明文件 = 发布目录 / "使用说明.txt"
-    with open(说明文件, 'w', encoding='utf-8') as f:
-        f.write(使用说明)
-    
-    print(f"创建使用说明: {说明文件}")
+
+    with open(发布目录 / "使用说明.txt", 'w', encoding='utf-8') as f:
+        f.write(使用说明内容)
+
+    print("✓ 创建使用说明文件")
+
+def 创建启动脚本(发布目录):
+    """创建启动脚本"""
+    script_content = """@echo off
+chcp 65001 > nul
+title L属性文法语义分析器
+echo 启动L属性文法语义分析器...
+echo.
+start "" "L属性文法语义分析器.exe"
+"""
+
+    with open(发布目录 / "启动L属性文法语义分析器.bat", 'w', encoding='gbk') as f:
+        f.write(script_content)
+
+    print("✓ 创建启动脚本")
+
+def 创建发布说明(发布目录):
+    """创建发布说明"""
+    发布说明内容 = """L属性文法语义分析器 - 发布说明
+
+版本信息：
+- 版本号：v1.0.0
+- 发布日期：2025年6月
+- 作者：王海翔 (2021060187)
+
+主要功能：
+✓ 完整的L属性文法支持
+✓ 可视化语义分析过程
+✓ 智能L属性特性验证
+✓ 完善的符号表管理
+✓ 中文本地化界面
+
+技术特点：
+- 支持标准BNF格式文法
+- 自动验证L属性特性
+- 详细的分析步骤展示
+- 完整的错误处理机制
+- 用户友好的GUI界面
+
+文件说明：
+- L属性文法语义分析器.exe：主程序
+- README.md：详细说明文档
+- 用户手册.md：用户操作指南
+- sample_grammar.txt：示例文法
+- test_cases.txt：测试用例
+- 使用说明.txt：快速使用指南
+- 启动L属性文法语义分析器.bat：启动脚本
+
+安装说明：
+1. 解压所有文件到同一目录
+2. 双击"L属性文法语义分析器.exe"或启动脚本
+3. 无需安装Python或其他依赖
+
+联系方式：
+作者：王海翔
+学号：2021060187
+班级：计科2203
+"""
+
+    with open(发布目录 / "发布说明.txt", 'w', encoding='utf-8') as f:
+        f.write(发布说明内容)
+
+    print("✓ 创建发布说明")
+
+
 
 def 主函数():
     """主函数"""
@@ -233,22 +261,29 @@ def 主函数():
     if not 构建可执行文件():
         print("构建失败，退出打包")
         return False
-    
-    # 复制附加文件
-    复制附加文件()
-    
-    # 创建启动脚本
-    创建启动脚本()
-    
-    # 创建使用说明
-    创建使用说明()
-    
+
+    # 创建发布包
+    if not 创建发布包():
+        print("发布包创建失败，退出打包")
+        return False
+
+    # 显示结果
     print("\n=== 打包完成 ===")
-    print("发布文件位于 '发布包' 目录中")
-    print("可执行文件: 发布包/L属性文法语义分析器.exe")
-    print("启动脚本: 发布包/启动L属性文法语义分析器.bat")
-    
+    print(f"可执行文件大小: {获取文件大小('dist/L属性文法语义分析器.exe')}")
+    print(f"发布包位置: {os.path.abspath('发布包')}")
+    print("\n可以运行以下命令测试：")
+    print("cd 发布包")
+    print("L属性文法语义分析器.exe")
+
     return True
+
+def 获取文件大小(文件路径):
+    """获取文件大小（MB）"""
+    if os.path.exists(文件路径):
+        size_bytes = os.path.getsize(文件路径)
+        size_mb = size_bytes / (1024 * 1024)
+        return f"{size_mb:.1f} MB"
+    return "未知"
 
 if __name__ == "__main__":
     try:

@@ -324,12 +324,9 @@ class L属性文法解析器:
                         错误列表.append(f"第{行号}行: {错误}")
 
                 elif 当前模式 == '语义规则':
-                    if 当前产生式编号 >= 0:
-                        成功, 错误 = self._解析语义规则(行内容, 文法, 当前产生式编号, 行号)
-                        if not 成功:
-                            错误列表.append(f"第{行号}行: {错误}")
-                    else:
-                        错误列表.append(f"第{行号}行: 语义规则必须跟在产生式后面")
+                    成功, 错误 = self._解析语义规则(行内容, 文法, 行号)
+                    if not 成功:
+                        错误列表.append(f"第{行号}行: {错误}")
 
             # 设置开始符号
             if 文法.产生式列表:
@@ -430,7 +427,7 @@ class L属性文法解析器:
         except Exception as e:
             return False, f"解析属性定义时发生错误: {str(e)}"
 
-    def _解析语义规则(self, 行内容: str, 文法: L属性文法, 产生式编号: int, 行号: int) -> Tuple[bool, str]:
+    def _解析语义规则(self, 行内容: str, 文法: L属性文法, 行号: int) -> Tuple[bool, str]:
         """解析语义规则"""
         try:
             # 语义规则格式：目标属性 := 表达式
@@ -448,12 +445,46 @@ class L属性文法解析器:
             依赖属性 = re.findall(r'\b\w+\.\w+\b', 表达式)
 
             语义规则对象 = 语义规则(目标属性, 表达式, 依赖属性)
-            文法.添加语义规则(产生式编号, 语义规则对象)
+
+            # 尝试从注释中提取产生式编号
+            产生式编号 = self._提取产生式编号(行内容, 文法)
+            if 产生式编号 >= 0:
+                文法.添加语义规则(产生式编号, 语义规则对象)
+            else:
+                # 如果没有明确指定，添加到所有可能的产生式
+                self._智能分配语义规则(语义规则对象, 文法)
 
             return True, ""
 
         except Exception as e:
             return False, f"解析语义规则时发生错误: {str(e)}"
+
+    def _提取产生式编号(self, 行内容: str, 文法: L属性文法) -> int:
+        """从注释中提取产生式编号"""
+        # 查找形如"产生式0:"、"产生式 0:"的模式
+        import re
+        match = re.search(r'产生式\s*(\d+)', 行内容)
+        if match:
+            编号 = int(match.group(1))
+            if 0 <= 编号 < len(文法.产生式列表):
+                return 编号
+        return -1
+
+    def _智能分配语义规则(self, 规则: 语义规则, 文法: L属性文法):
+        """智能分配语义规则到合适的产生式"""
+        # 根据目标属性的符号名找到对应的产生式
+        if '.' in 规则.目标属性:
+            符号名 = 规则.目标属性.split('.')[0]
+
+            # 查找左部为该符号的产生式
+            for i, 产生式 in enumerate(文法.产生式列表):
+                if 产生式.左部 == 符号名:
+                    文法.添加语义规则(i, 规则)
+                    return
+
+        # 如果找不到合适的产生式，添加到第一个产生式
+        if 文法.产生式列表:
+            文法.添加语义规则(0, 规则)
 
 
 # ==================== 语义分析引擎类 ====================
@@ -570,19 +601,14 @@ class 语义分析引擎:
     def _执行语义规则(self, 规则: 语义规则, 产生式: 产生式) -> Tuple[bool, Any, str]:
         """执行单个语义规则"""
         try:
-            # 检查依赖属性是否已计算
-            for 依赖属性 in 规则.依赖属性:
-                if 依赖属性 not in self.属性值表:
-                    return False, None, f"依赖属性 {依赖属性} 尚未计算"
-
-            # 计算表达式
+            # 计算表达式（不预先检查依赖，在计算时动态处理）
             结果 = self._计算表达式(规则.表达式, 产生式)
 
             # 存储结果
             self.属性值表[规则.目标属性] = 结果
 
             # 如果是符号表操作，执行相应操作
-            if 规则.表达式.startswith("addtype(") or "符号表" in 规则.表达式:
+            if "addtype(" in 规则.表达式:
                 self._执行符号表操作(规则.表达式, 结果)
 
             return True, 结果, ""
@@ -592,49 +618,112 @@ class 语义分析引擎:
 
     def _计算表达式(self, 表达式: str, 产生式: 产生式) -> Any:
         """计算语义表达式"""
-        # 替换表达式中的属性引用
-        计算表达式 = 表达式
-
-        # 查找所有属性引用并替换为实际值
-        属性引用列表 = re.findall(r'\b\w+\.\w+\b', 表达式)
-        for 属性引用 in 属性引用列表:
-            if 属性引用 in self.属性值表:
-                值 = self.属性值表[属性引用]
-                if isinstance(值, str):
-                    计算表达式 = 计算表达式.replace(属性引用, f'"{值}"')
-                else:
-                    计算表达式 = 计算表达式.replace(属性引用, str(值))
+        # 处理直接的字符串常量
+        if 表达式.startswith('"') and 表达式.endswith('"'):
+            return 表达式.strip('"')
 
         # 处理特殊函数调用
-        if 计算表达式.startswith("addtype("):
-            return self._处理addtype函数(计算表达式)
-        elif 计算表达式.startswith("newtemp("):
+        if "addtype(" in 表达式:
+            return self._处理addtype函数调用(表达式)
+        elif 表达式.startswith("newtemp("):
             return self._处理newtemp函数()
-        elif "+" in 计算表达式 or "-" in 计算表达式 or "*" in 计算表达式:
+
+        # 替换表达式中的属性引用
+        计算表达式 = 表达式
+        属性引用列表 = re.findall(r'\b\w+\.\w+\b', 表达式)
+
+        for 属性引用 in 属性引用列表:
+            # 尝试获取属性值，如果不存在则使用默认值或推断值
+            值 = self._获取或推断属性值(属性引用, 产生式)
+            if isinstance(值, str):
+                计算表达式 = 计算表达式.replace(属性引用, f'"{值}"')
+            else:
+                计算表达式 = 计算表达式.replace(属性引用, str(值))
+
+        # 处理算术表达式
+        if "+" in 计算表达式 or "-" in 计算表达式 or "*" in 计算表达式:
             try:
                 return eval(计算表达式)
             except:
                 return 计算表达式
         else:
-            return 计算表达式
+            return 计算表达式.strip('"')
 
-    def _处理addtype函数(self, 表达式: str) -> str:
+    def _获取或推断属性值(self, 属性引用: str, 产生式: 产生式) -> Any:
+        """获取或推断属性值"""
+        # 如果属性值已存在，直接返回
+        if 属性引用 in self.属性值表:
+            return self.属性值表[属性引用]
+
+        # 尝试推断属性值
+        符号名, 属性名 = 属性引用.split('.')
+
+        # 对于类型属性，根据终结符推断
+        if 属性名 == 'type' and 符号名 == 'T':
+            # 查找输入串中的类型关键字
+            for 键, 值 in self.属性值表.items():
+                if '终结符' in 键 and 值 in ['int', 'float', 'char', 'string']:
+                    return 值
+            return "int"  # 默认类型
+
+        # 对于标识符名称，从终结符中获取
+        if 属性名 == 'name' and 符号名 == 'id':
+            # 查找标识符终结符
+            for 键, 值 in self.属性值表.items():
+                if '终结符' in 键 and isinstance(值, str) and 值.isalpha():
+                    if 值 not in ['int', 'float', 'char', 'string', ',']:
+                        return 值
+            return "unknown"  # 默认标识符名
+
+        # 其他情况返回空字符串
+        return ""
+
+    def _处理addtype函数调用(self, 表达式: str) -> str:
         """处理addtype函数调用"""
-        # 提取参数
-        参数部分 = 表达式[8:-1]  # 去掉"addtype("和")"
-        参数列表 = [参数.strip().strip('"') for 参数 in 参数部分.split(',')]
+        try:
+            # 查找addtype函数调用
+            start = 表达式.find("addtype(")
+            if start == -1:
+                return "未找到addtype函数调用"
 
-        if len(参数列表) >= 2:
-            标识符名 = 参数列表[0]
-            类型名 = 参数列表[1]
+            # 提取参数部分
+            参数开始 = start + 8  # "addtype("的长度
+            参数结束 = 表达式.find(")", 参数开始)
+            if 参数结束 == -1:
+                return "addtype函数格式错误"
 
-            # 添加到符号表
-            符号项 = 符号表项(标识符名, 类型名)
-            self.符号表.添加符号(符号项)
+            参数部分 = 表达式[参数开始:参数结束]
+            参数列表 = [参数.strip() for 参数 in 参数部分.split(',')]
 
-            return f"已将 {标识符名}:{类型名} 添加到符号表"
+            if len(参数列表) >= 2:
+                # 解析参数，可能包含属性引用
+                标识符名参数 = 参数列表[0]
+                类型名参数 = 参数列表[1]
 
-        return "addtype函数参数不足"
+                # 解析标识符名
+                if '.' in 标识符名参数:
+                    # 属性引用，需要获取实际值
+                    标识符名 = self._获取或推断属性值(标识符名参数, None)
+                else:
+                    标识符名 = 标识符名参数.strip('"')
+
+                # 解析类型名
+                if '.' in 类型名参数:
+                    # 属性引用，需要获取实际值
+                    类型名 = self._获取或推断属性值(类型名参数, None)
+                else:
+                    类型名 = 类型名参数.strip('"')
+
+                # 添加到符号表
+                符号项 = 符号表项(标识符名, 类型名)
+                self.符号表.添加符号(符号项)
+
+                return f"已将 {标识符名}:{类型名} 添加到符号表"
+
+            return "addtype函数参数不足"
+
+        except Exception as e:
+            return f"处理addtype函数时发生错误: {str(e)}"
 
     def _处理newtemp函数(self) -> str:
         """处理newtemp函数调用"""
@@ -749,15 +838,24 @@ L.in : 继承 字符串 "" "继承的类型信息"
 id.name : 综合 字符串 "" "标识符名称"
 
 [语义规则]
-# 产生式 D -> T L 的语义规则
+# 产生式0: D -> T L 的语义规则
 L.in := T.type
 
-# 产生式 L -> L1 , id 的语义规则
-L1.in := L.in
-addtype(id.name, L.in)
+# 产生式1: T -> int 的语义规则
+T.type := "int"
 
-# 产生式 L -> id 的语义规则
-addtype(id.name, L.in)
+# 产生式2: T -> float 的语义规则
+T.type := "float"
+
+# 产生式3: T -> char 的语义规则
+T.type := "char"
+
+# 产生式4: L -> L1 , id 的语义规则
+L1.in := L.in
+id.entry := addtype(id.name, L.in)
+
+# 产生式5: L -> id 的语义规则
+id.entry := addtype(id.name, L.in)
 """
         self.文法输入框.insert(tk.END, 示例文法)
 
@@ -1118,7 +1216,7 @@ L属性文法是一类特殊的属性文法，满足以下条件：
     def _模拟语法分析(self, 输入串: str) -> List[int]:
         """模拟语法分析过程，返回产生式序列"""
         # 这里实现一个简单的语法分析模拟
-        # 实际应用中应该集成真正的语法分析器
+        # 按照自顶向下的顺序生成产生式序列
 
         单词列表 = 输入串.split()
         产生式序列 = []
@@ -1126,8 +1224,11 @@ L属性文法是一类特殊的属性文法，满足以下条件：
         # 根据输入串的模式确定产生式序列
         if len(单词列表) >= 2 and 单词列表[0] in ['int', 'float', 'char']:
             # 类型声明模式：int a, b, c
+
+            # 首先应用 D -> T L
             产生式序列.append(0)  # D -> T L
 
+            # 然后应用 T -> 具体类型
             if 单词列表[0] == 'int':
                 产生式序列.append(1)  # T -> int
             elif 单词列表[0] == 'float':
@@ -1135,16 +1236,19 @@ L属性文法是一类特殊的属性文法，满足以下条件：
             elif 单词列表[0] == 'char':
                 产生式序列.append(3)  # T -> char
 
-            # 处理标识符列表
-            标识符数量 = len([w for w in 单词列表[1:] if w not in [',', ';']])
+            # 处理标识符列表 L
+            标识符列表 = [w for w in 单词列表[1:] if w not in [',', ';']]
+            标识符数量 = len(标识符列表)
 
             if 标识符数量 > 1:
-                # L -> L , id (多个标识符)
+                # 多个标识符：L -> L , id
+                # 需要从左到右递归展开
                 for i in range(标识符数量 - 1):
                     产生式序列.append(4)  # L -> L , id
                 产生式序列.append(5)  # L -> id (最后一个)
             else:
-                产生式序列.append(5)  # L -> id (单个标识符)
+                # 单个标识符：L -> id
+                产生式序列.append(5)  # L -> id
 
         return 产生式序列
 
