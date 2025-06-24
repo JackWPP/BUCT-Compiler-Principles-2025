@@ -1,0 +1,49 @@
+# 自定义语义分析程序依赖列表
+# 作者: 王海翔 (2021060187)
+
+# 核心依赖
+# tkinter 通常随Python安装，无需单独安装
+
+# 数据处理
+dataclasses; python_version < "3.7"
+
+# 类型提示支持
+typing-extensions>=3.7.4; python_version < "3.8"
+
+# 开发和测试依赖（可选）
+# 如果需要进行开发或运行测试，可以安装以下包
+
+# 代码格式化
+# black>=21.0.0
+
+# 代码检查
+# flake8>=3.8.0
+# pylint>=2.6.0
+
+# 类型检查
+# mypy>=0.800
+
+# 测试覆盖率
+# coverage>=5.0.0
+
+# 文档生成
+# sphinx>=3.0.0
+
+# 打包工具
+pyinstaller>=4.0
+
+# 注意事项:
+# 1. 本程序主要使用Python标准库，依赖较少
+# 2. tkinter是Python标准库的一部分，通常无需单独安装
+# 3. dataclasses在Python 3.7+中是标准库的一部分
+# 4. typing在Python 3.5+中是标准库的一部分
+# 5. 如果使用Python 3.7+，大部分依赖都已包含在标准库中
+
+# 安装命令:
+# pip install -r requirements.txt
+
+# 或者只安装必需的依赖:
+# pip install pyinstaller
+
+# 对于Python 3.7+用户，可能不需要安装任何额外依赖
+# 直接运行: python custom_semantic_analyzer.py
