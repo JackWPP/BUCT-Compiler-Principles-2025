@@ -7,7 +7,9 @@
 ![Python](https://img.shields.io/badge/Python-3.7+-orange)
 ![Status](https://img.shields.io/badge/Status-Complete-success)
 
-**北京化工大学计算机科学与技术学院编译原理课程作业**
+**北京化工大学信息科学与技术学院  编译原理 课程作业** 
+
+Produced by WPP
 
 </div>
 
