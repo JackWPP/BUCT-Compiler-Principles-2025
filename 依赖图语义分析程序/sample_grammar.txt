@@ -1,0 +1,21 @@
+# 依赖图语义分析器示例文法
+# 算术表达式文法，用于演示依赖图语义分析
+
+[文法]
+E -> E + T | T
+T -> T * F | F  
+F -> ( E ) | id
+
+[属性定义]
+E.val : 综合属性
+T.val : 综合属性
+F.val : 综合属性
+id.lexval : 综合属性
+
+[语义规则]
+E.val := E.val + T.val  # 0
+E.val := T.val          # 1
+T.val := T.val * F.val  # 2
+T.val := F.val          # 3
+F.val := E.val          # 4
+F.val := id.lexval      # 5
